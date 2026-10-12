@@ -25,7 +25,8 @@
   state.data=data;if(!data.articles.some(a=>a.id===state.selected))state.selected=data.articles[0]?.id||null;state.brief=new Set([...state.brief].filter(id=>data.articles.some(a=>a.id===id)));
   const stale=data.meta.dataAsOf&&Date.now()-Date.parse(data.meta.dataAsOf)>86400000;
   $('dataStatus').textContent=`${state.fallback?'使用站内快照':'已载入公开更新'} · ${data.meta.dataAsOf?date(data.meta.dataAsOf,true)+'（北京时间）':'无成功采集时点'}${stale?' · 已超过24小时':''}`;
-  $('modelFooter').textContent=`Kimi · ${STATUS[data.modelRun.status]||'状态待核实'} · ${data.modelRun.calls} 次调用`;$('articleCount').textContent=data.articles.length;
+  const run=data.modelRun,finished=data.articles.filter(a=>a.modelSummary.status==='succeeded').length;
+  $('modelFooter').replaceChildren(document.createTextNode(`Kimi · ${STATUS[run.status]||'状态待核实'} · ${finished}/${data.articles.length} 篇摘要 · ${run.calls} 次调用${run.calls?' · '+(run.usage?run.usage.totalTokens+' tokens':'用量未知'):''} `),link('查看运行 ↗',run.workflowUrl));$('articleCount').textContent=data.articles.length;
   const successes=data.sources.filter(s=>s.articleCount>0).length;$('sourceCount').textContent=`${successes} / ${data.sources.length} 个来源有采集结果`;
   $('generateButton').href=WORKFLOW;renderFilters();renderArticles();renderDetail();renderSources();renderWeather();updateBrief();
   const center=data.region?.center;if(Array.isArray(center)&&center.length===2&&center.every(finite)&&Math.abs(center[0])<=180&&Math.abs(center[1])<=85){map.home=[...center];map.center=[...center];renderMap();}
