@@ -15,7 +15,7 @@
         { "name": "Check static files and data boundaries", "run": "npm test" },
         { "name": "Build allowlisted public files", "run": "npm run build" },
         { "name": "Configure Pages", "uses": "actions/configure-pages@v5" },
-        { "name": "Upload only the static site", "uses": "actions/upload-pages-artifact@v4", "with": { "path": "dist", "retention-days": 1, "include-hidden-files": false } }
+        { "name": "Upload only the static site", "uses": "actions/upload-pages-artifact@v4", "with": { "path": "dist", "retention-days": 1 } }
       ]
     },
     "deploy": {
