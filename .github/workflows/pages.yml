@@ -1,0 +1,30 @@
+{
+  "name": "Publish read-only showcase",
+  "on": { "push": { "branches": ["main"] }, "workflow_dispatch": {} },
+  "permissions": { "contents": "read" },
+  "concurrency": { "group": "showcase-pages", "cancel-in-progress": false },
+  "jobs": {
+    "build": {
+      "if": "${{ github.ref == 'refs/heads/main' }}",
+      "runs-on": "ubuntu-latest",
+      "timeout-minutes": 5,
+      "permissions": { "contents": "read", "pages": "read" },
+      "steps": [
+        { "uses": "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10", "with": { "persist-credentials": false } },
+        { "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38", "with": { "node-version": "24", "package-manager-cache": false } },
+        { "name": "Check static files and data boundaries", "run": "npm test" },
+        { "name": "Build allowlisted public files", "run": "npm run build" },
+        { "name": "Configure Pages", "uses": "actions/configure-pages@v5" },
+        { "name": "Upload only the static site", "uses": "actions/upload-pages-artifact@v4", "with": { "path": "dist", "retention-days": 1, "include-hidden-files": false } }
+      ]
+    },
+    "deploy": {
+      "needs": "build",
+      "runs-on": "ubuntu-latest",
+      "timeout-minutes": 10,
+      "permissions": { "pages": "write", "id-token": "write" },
+      "environment": { "name": "github-pages", "url": "${{ steps.deployment.outputs.page_url }}" },
+      "steps": [ { "name": "Deploy to GitHub Pages", "id": "deployment", "uses": "actions/deploy-pages@v5" } ]
+    }
+  }
+}
