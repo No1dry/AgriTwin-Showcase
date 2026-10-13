@@ -1,4 +1,5 @@
 import { Script } from 'node:vm';
+import { createHash } from 'node:crypto';
 import { validateShowcase } from './validate.mjs';
 export { validateShowcase };
 import { lstat, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -85,7 +86,13 @@ export async function build(root = PROJECT_ROOT) {
   await mkdir(target, { recursive: true });
   for (const [name, text] of files) {
     await mkdir(path.dirname(path.join(target, name)), { recursive: true });
-    await writeFile(path.join(target, name), text, { encoding: 'utf8' });
+    const output = name === 'index.html'
+      ? ['assets/app.css', 'assets/app.js'].reduce((html, asset) => {
+          const version = createHash('sha256').update(files.get(asset)).digest('hex').slice(0, 12);
+          return html.replace(`./${asset}`, `./${asset}?v=${version}`);
+        }, text)
+      : text;
+    await writeFile(path.join(target, name), output, { encoding: 'utf8' });
   }
   await inspectTree(target);
   return target;
