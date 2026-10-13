@@ -1,29 +1,29 @@
-# AgriTwin 外部情报工作台
+# AgriTwin Showcase
 
-独立静态网站，展示真实公开农业资料、Kimi 摘要及逐条出处。无导航栏，左侧情报列表、中间梁子湖区域卫星影像、右侧证据和使用限制。内部地块、塘口、生产批次、传感器保持 N/A。
+[在线情报简报](https://no1dry.github.io/AgriTwin-Showcase/)
 
-## 数据与操作
+农业外部情报的独立展示站。参考用户提供的仪表盘设计：左侧分类资料卡，右侧连续卫星地图，文章详情悬浮于地图内部。页面无导航栏，也不展示模型品牌、调用量、源码、接入占位和哈希等工程字段。
 
-页面优先读取 AgriTwin-Intelligence 的 `public/external/latest.json`，失败时使用 `public/data/showcase.json` 并显示快照日期。新模型结果由情报仓库 Actions 生成，浏览器不存储密钥或调用模型。
+## 使用
 
-分类/搜索筛选资料；选择条目查看原文、摘要、证据短引、采集时间与版本哈希；“加入简报”组成当前会话的选编并导出 Markdown。“生成简报”打开引擎 Actions，由用户手动启动。来源面板显示成功和失败原因。
+- 搜索情报；按分类折叠列表，在分类卡内滚动查看更多条目。
+- 点击文章打开地图内详情，可阅读摘要、原文依据、相关资料与原文出处。关闭详情不改变地图尺寸。
+- “订阅专题”选择首页关注的类别；专题和已选简报保存在当前浏览器本地。这是内容偏好，不提供邮件推送。
+- “加入简报”保存单篇；“生成简报”打开已选内容，未选时汇集当前筛选结果；“导出”下载 Markdown。
+- 地图支持拖动、缩放、返回梁子湖、全区概览、比例尺与天气图层开关。
 
-地图使用真实 Esri World Imagery 卫星/航空影像，署名保持可见；影像非实时，拍摄时间因区域而异。114.625,30.1417 是梁子湖区范围推算中点，非农场定位、田塘边界或已核实中心。Open-Meteo 是区域气象模型，不是现场监测，也不代替尚未接通的和风官方预警。
+## 数据与运行
 
-## 本地与部署
+浏览器优先读取 AgriTwin-Intelligence 的 public/external/latest.json，网络失败时使用站内真实快照；过期资料显示更新时间提示。页面展示来自真实调用的摘要，本次界面重构不新增模型调用。
 
-Node.js 24；无第三方运行依赖。
+内部农场、地块、塘口尚不参与当前数据产品，因此不显示空模块，也不绘制虚构边界。Esri World Imagery 为真实历史卫星/航空影像；天气为 Open-Meteo 区域预报。署名保留在地图底部，详细说明放在提示中。
 
-```sh
-npm test
-npm run build
-npm run serve -- --port 4190
-```
+来源可用性、失败原因、模型调用量与证据哈希继续保留于引擎输出和 Actions；用户阅读界面只显示必要的来源与资料信息。无原文照片的卡片使用分类图形，不能理解为现场照片。当前仅 NMC 2026-10-12 周报使用对应官方正文配图。
 
-`scripts/export-engine.mjs` 只复制同级引擎仓库已验证的真实公开结果，不生成样例。
+## 开发与部署
 
-Pages 选择 GitHub Actions，工作流测试、构建后仅上传 `dist/` 的四份允许文件。无需网站 Secrets。日期、引用、失败状态、私有字段和典型密钥格式均有发布前检查。
+Node.js 24，无前端依赖。`npm test` 验证数据与发布边界，`npm run build` 生成 dist，`npm run serve` 启动本地预览。
 
-页面：[No1dry.github.io/AgriTwin-Showcase](https://No1dry.github.io/AgriTwin-Showcase/)。部署是否完成以 Actions 结果为准。
+main 提交后由 Pages workflow 自动测试、构建与发布；无模型密钥、无付费定时任务。引擎采集在独立仓库 Actions 手动触发，不暴露为用户页面跳转。
 
-详细运行验收与对话文档统一归档在 [情报仓库 docs/conversation-archive](https://github.com/No1dry/AgriTwin-Intelligence/tree/main/docs/conversation-archive)。
+产品要求见 [AGENTS.md](AGENTS.md)。设计与验收文档统一保存于 [对话归档](https://github.com/No1dry/AgriTwin-Intelligence/tree/main/docs/conversation-archive)。
