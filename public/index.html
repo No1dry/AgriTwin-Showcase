@@ -2,24 +2,49 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light">
-<meta name="description" content="汇聚政策、气象、科研与行业动态，辅助农业生产决策。"><title>外部情报简报</title>
-<link rel="stylesheet" href="./assets/app.css"><script src="./assets/app.js" defer></script>
+<meta name="description" content="汇聚外部农业情报与农场每日信息，辅助农业生产决策。"><title>情报总览</title>
+<link rel="stylesheet" href="./assets/app.css"><script src="./assets/weather.js" defer></script><script src="./assets/app.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#articleList">跳至情报列表</a>
 <header class="topbar">
- <div class="page-title"><h1>外部情报简报</h1><p>汇聚政策、气象、科研与行业动态，辅助农业生产决策</p></div>
+ <div class="page-title"><h1>情报总览</h1><p>汇集外部动态，关注农场每一天</p></div>
  <label class="search-field"><span data-icon="search"></span><input id="searchInput" type="search" autocomplete="off" placeholder="搜索政策、气象、论文、行业动态…" aria-label="搜索情报"></label>
  <div class="top-actions"><button id="generateButton" class="button primary" type="button"><span data-icon="plus"></span>生成简报<span id="briefCount" class="button-count" hidden></span></button><button id="topicButton" class="button" type="button"><span data-icon="topic"></span>订阅专题</button><button id="exportButton" class="button" type="button"><span data-icon="export"></span>导出</button></div>
 </header>
 <main class="workspace">
- <aside class="library-panel" aria-label="情报列表">
+ <aside class="library-panel" aria-label="情报总览">
+ <section class="external-section" aria-labelledby="externalHeading">
+  <div class="section-heading"><h2 id="externalHeading"><span data-icon="research"></span>外部情报</h2><div class="library-tools"><button id="sourcesButton" type="button"><span data-icon="book"></span>信源</button><button id="refreshButton" type="button" aria-label="刷新情报" title="刷新情报"><span data-icon="refresh"></span></button></div></div>
+  <div id="externalScroll" class="section-scroll" tabindex="0" role="region" aria-label="外部情报列表">
   <p id="dataNotice" class="data-notice" role="status" hidden></p>
   <div id="loadingState" class="list-state"><span class="spinner"></span><h2>正在加载情报</h2></div>
   <div id="errorState" class="list-state" hidden><h2>暂时无法加载</h2><p>请检查网络后重试。</p><button id="retryButton" class="button" type="button">重新加载</button></div>
   <div id="articleList" class="article-list" tabindex="-1"></div>
   <div id="emptyState" class="list-state" hidden><span data-icon="search"></span><h2>没有找到相关情报</h2><p>试试其他关键词，或查看全部专题。</p><button id="resetSearch" class="button" type="button">查看全部</button></div>
-  <div class="library-tools"><button id="sourcesButton" type="button"><span data-icon="book"></span>信源目录</button><button id="refreshButton" type="button" aria-label="刷新情报" title="刷新情报"><span data-icon="refresh"></span></button></div>
+  </div>
+ </section>
+ <section class="internal-section" aria-labelledby="internalHeading">
+  <div class="section-heading"><h2 id="internalHeading"><span data-icon="leaf"></span>内部信息</h2><span class="section-caption">每日概况</span></div>
+  <div class="period-heading"><span id="internalPeriod"></span><span>北京时间 · 24小时</span></div>
+  <div id="internalScroll" class="section-scroll" tabindex="0" role="region" aria-label="内部信息概况">
+   <details class="insight-group sensor-group" open><summary><span data-icon="scope"></span><h3>传感器日均</h3><span class="group-subtitle">农场环境</span><span data-icon="chevron"></span></summary>
+    <div class="sensor-grid">
+     <article class="sensor-metric"><div class="metric-label">空气温度<span data-icon="thermometer"></span></div><div class="metric-reading">N/A<small>°C</small><span>最高 N/A<br>最低 N/A</span></div></article>
+     <article class="sensor-metric"><div class="metric-label">空气湿度<span data-icon="humidity"></span></div><div class="metric-reading">N/A<small>%</small><span>最高 N/A<br>最低 N/A</span></div></article>
+     <article class="sensor-metric"><div class="metric-label">土壤含水率<span data-icon="droplet"></span></div><div class="metric-reading">N/A<small>%</small><span>最高 N/A<br>最低 N/A</span></div></article>
+     <article class="sensor-metric"><div class="metric-label">土壤 pH<span data-icon="gauge"></span></div><div class="metric-reading">N/A<span>最高 N/A<br>最低 N/A</span></div></article>
+    </div>
+   </details>
+   <details class="insight-group sensor-trend"><summary><span data-icon="chart"></span><h3>传感器趋势</h3><span class="group-subtitle">近7日</span><span data-icon="chevron"></span></summary><div class="sensor-empty"><strong>N/A</strong><span>暂无可绘制的传感器记录</span></div></details>
+   <details class="insight-group weather-group" open><summary><span data-icon="cloud"></span><h3>天气变化</h3><span class="group-subtitle">梁子湖 · 外部气象</span><span data-icon="chevron"></span></summary>
+    <div class="weather-summary" id="weatherSummary" aria-live="polite"><p>正在读取区域天气…</p></div>
+    <div class="trend-heading"><span>近7日 · 午间结算</span><div class="trend-options" role="group" aria-label="天气趋势指标"><button id="temperatureTrend" type="button" aria-pressed="true">日均气温</button><button id="rainTrend" type="button" aria-pressed="false">累计降水</button></div></div>
+    <div id="weatherTrend" class="weather-trend"></div>
+    <div class="weather-source"><a href="https://open-meteo.com/en/docs" target="_blank" rel="noopener noreferrer">Open-Meteo · 区域模型数据</a><span id="weatherUpdated"></span><button id="retryWeather" type="button" hidden>重试</button></div>
+   </details>
+  </div>
+ </section>
  </aside>
  <section id="mapPanel" class="map-panel" aria-label="梁子湖情报地图">
   <div id="mapCanvas" class="map-canvas" tabindex="0" role="application" aria-label="梁子湖卫星地图，可拖动平移，使用加减键缩放"><div id="tileLayer" class="tile-layer" aria-hidden="true"></div></div>
