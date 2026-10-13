@@ -93,7 +93,7 @@
   if(!valid.length){root.append(el('p','weather-trend-empty','暂无完整的天气序列'));return;}
   const low=isRain?0:Math.floor(Math.min(...valid)-1),high=Math.max(low+1,Math.ceil(Math.max(...valid)+ (isRain?1:1))),x=i=>38+i*62,y=v=>70-(v-low)/(high-low)*50;
   const svg=svgNode('svg',{viewBox:'0 0 440 100',role:'img','aria-label':`近7日${isRain?'累计降水':'日均气温'}，按中午12点结算。`+days.map((d,i)=>`${shortDay(d.end)} ${finite(values[i])?values[i].toFixed(1)+unit:'暂无完整数据'}`).join('；')});
-  for(const v of [low,(low+high)/2,high])svg.append(svgNode('line',{x1:32,y1:y(v),x2:425,y2:y(v),class:'trend-grid'}),svgNode('text',{x:27,y:y(v)+3,'text-anchor':'end'},v.toFixed(0)));
+  for(const v of [low,(low+high)/2,high])svg.append(svgNode('line',{x1:32,y1:y(v),x2:425,y2:y(v),class:'trend-grid'}),svgNode('text',{x:27,y:y(v)+3,'text-anchor':'end'},String(Number(v.toFixed(1)))));
   svg.append(svgNode('text',{x:6,y:11},unit));
   let segment=[];const flush=()=>{if(segment.length>1){svg.append(svgNode('polygon',{points:`${segment[0][0]},70 `+segment.map(p=>p.join(',')).join(' ')+` ${segment.at(-1)[0]},70`,fill:'#f6cf872e'}),svgNode('polyline',{points:segment.map(p=>p.join(',')).join(' '),class:'trend-line'}));}segment=[];};
   values.forEach((value,i)=>{if(!isRain){if(finite(value))segment.push([x(i),y(value)]);else flush();}});flush();
