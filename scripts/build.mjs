@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const PROJECT_ROOT = fileURLToPath(new URL('../', import.meta.url));
-export const PUBLIC_FILES = Object.freeze(['index.html', 'assets/app.css', 'assets/app.js', 'data/showcase.json']);
+export const PUBLIC_FILES = Object.freeze(['index.html', 'assets/app.css', 'assets/app.js', 'assets/weather.js', 'data/showcase.json']);
 const DIRECTORIES = new Set(['assets', 'data']);
 const MAX_FILE_BYTES = 2_000_000;
 
@@ -61,17 +61,21 @@ export async function readPublicFiles(root = PROJECT_ROOT) {
     result.set(name, text);
   }
   validateShowcase(JSON.parse(result.get('data/showcase.json')));
-  const javascript = result.get('assets/app.js');
-  new Script(javascript);
-  requireCondition(!/innerHTML|document\.write|\beval\s*\(/u.test(javascript), 'SITE_UNSAFE_RENDER');
+  for (const name of ['assets/weather.js', 'assets/app.js']) {
+    const javascript = result.get(name);
+    new Script(javascript);
+    requireCondition(!/innerHTML|document\.write|\beval\s*\(/u.test(javascript), 'SITE_UNSAFE_RENDER');
+  }
   const html = result.get('index.html');
   requireCondition(!/<(?:base|iframe|object|embed|form)\b|\son[a-z]+\s*=/iu.test(html), 'SITE_ACTIVE_HTML');
   for (const match of html.matchAll(/\b(?:src|href)\s*=\s*["']([^"']*)["']/giu)) {
     const url = match[1];
     requireCondition(!url.startsWith('/') && !/^(?:javascript|data|file):/iu.test(url), 'SITE_RESOURCE_PATH');
   }
-  for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/giu)) {
-    requireCondition(/\bsrc\s*=\s*["'](?:\.\/)?assets\/app\.js["']/iu.test(match[1]) && !match[2].trim(), 'SITE_SCRIPT_SOURCE');
+  const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/giu)];
+  requireCondition(scripts.length === 2 && scripts[0][1].includes('assets/weather.js') && scripts[1][1].includes('assets/app.js'), 'SITE_SCRIPT_DEPENDENCY_ORDER');
+  for (const match of scripts) {
+    requireCondition(/\bsrc\s*=\s*["'](?:\.\/)?assets\/(?:app|weather)\.js["']/iu.test(match[1]) && !match[2].trim(), 'SITE_SCRIPT_SOURCE');
   }
   requireCondition(!/@import\b|url\(\s*["']?(?:https?:|\/\/)/iu.test(result.get('assets/app.css')), 'SITE_REMOTE_STYLE');
   return result;
@@ -87,7 +91,7 @@ export async function build(root = PROJECT_ROOT) {
   for (const [name, text] of files) {
     await mkdir(path.dirname(path.join(target, name)), { recursive: true });
     const output = name === 'index.html'
-      ? ['assets/app.css', 'assets/app.js'].reduce((html, asset) => {
+      ? ['assets/app.css', 'assets/weather.js', 'assets/app.js'].reduce((html, asset) => {
           const version = createHash('sha256').update(files.get(asset)).digest('hex').slice(0, 12);
           return html.replace(`./${asset}`, `./${asset}?v=${version}`);
         }, text)
