@@ -6,6 +6,9 @@
  const PATHS={
  search:['M21 21l-5-5','M18 10.5a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0'],
  plus:['M12 5v14M5 12h14'],minus:['M5 12h14'],close:['M6 6l12 12M6 18 18 6'],chevron:['m6 9 6 6 6-6'],up:['m6 15 6-6 6 6'],
+ humidity:['M3 7c3-3 5 3 8 0s5 3 10 0M3 12c3-3 5 3 8 0s5 3 10 0M3 17c3-3 5 3 8 0s5 3 10 0'],
+ droplet:['M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Z','M8 15a4 4 0 0 0 4 4'],
+ gauge:['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0','m12 12 5-5M7 16h10M12 5v1M5 12h1M18 12h1'],
  export:['M12 15V3m-4 4 4-4 4 4','M6 10H4v10h16V10h-2'],
  star:['m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z'],
  topic:['m12 2 3 2 3.5.5.5 3.5 2 4-2 3-.5 3.5-3.5.5-3 2-3-2-3.5-.5-.5-3.5-2-3 2-4 .5-3.5L9 4Z','M12 7v5l3 2'],
@@ -79,7 +82,32 @@
   $('originalLink').href=safeURL(a.url);$('articleDetail').scrollTop=0;updateBrief();
  }
  function renderSources(){$('sourceList').replaceChildren(...state.data.sources.map(s=>{const item=el('article','source-entry'),h=el('div','source-entry-header');h.append(link(s.name,s.url),el('span','tag',s.articleCount?`${s.articleCount} 条资料`:['failed','blocked'].includes(s.status)?'暂不可用':'暂无资料'));item.append(h);return item;}));$('sourceDate').textContent=`资料更新于 ${date(state.data.meta.dataAsOf,true)}`;}
- function renderWeather(){const w=state.data?.weather,n=$('weatherChip');n.replaceChildren();n.hidden=!w||w.kind!=='model_forecast'||!state.showWeather;if(n.hidden)return;n.append(icon('thermometer','weather-symbol'),el('span','weather-temperature',`${finite(w.temperatureC)?w.temperatureC.toFixed(1):'—'}°C`),el('span','weather-location','梁子湖'),el('span','weather-date',date(w.time,true)));n.title=`区域天气预报 · 风速 ${w.windKph} km/h · 降水 ${w.precipitationMm} mm · Open-Meteo`;}
+ function renderWeather(){const w=state.regionalCurrent||state.data?.weather,n=$('weatherChip');n.replaceChildren();n.hidden=!w||w.kind!=='model_forecast'||!state.showWeather;if(n.hidden)return;n.append(icon('thermometer','weather-symbol'),el('span','weather-temperature',`${finite(w.temperatureC)?w.temperatureC.toFixed(1):'—'}°C`),el('span','weather-location','梁子湖'),el('span','weather-date',date(w.time,true)));n.title=`区域气象模型数据 · 风速 ${w.windKph} km/h · 前1小时降水 ${w.precipitationMm} mm · Open-Meteo`;}
+
+ let weatherRows=null,weatherLoading=false,weatherFetched=null,weatherField='temperature_2m';
+ const shortDay=seconds=>new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',month:'2-digit',day:'2-digit'}).format(new Date(seconds*1000)).replace('/','.');
+ function renderPeriod(){const p=WeatherSeries.windowAt();$('internalPeriod').textContent=`${shortDay(p.start)} 12:00 — ${shortDay(p.end)} 12:00`;$('internalPeriod').title=`最近一个已结束的24小时统计周期：${date(new Date(p.start*1000).toISOString(),true)} 至 ${date(new Date(p.end*1000).toISOString(),true)}`;return p;}
+ function svgNode(tag,attrs={},value){const n=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [key,v]of Object.entries(attrs))n.setAttribute(key,String(v));if(value!==undefined)n.textContent=value;return n;}
+ function drawWeatherTrend(days){const root=$('weatherTrend');root.replaceChildren();const isRain=weatherField==='precipitation',unit=isRain?'mm':'°C',values=days.map(d=>d[weatherField]),valid=values.filter(finite);
+  $('temperatureTrend').setAttribute('aria-pressed',String(!isRain));$('rainTrend').setAttribute('aria-pressed',String(isRain));
+  if(!valid.length){root.append(el('p','weather-trend-empty','暂无完整的天气序列'));return;}
+  const low=isRain?0:Math.floor(Math.min(...valid)-1),high=Math.max(low+1,Math.ceil(Math.max(...valid)+ (isRain?1:1))),x=i=>38+i*62,y=v=>70-(v-low)/(high-low)*50;
+  const svg=svgNode('svg',{viewBox:'0 0 440 100',role:'img','aria-label':`近7日${isRain?'累计降水':'日均气温'}，按中午12点结算。`+days.map((d,i)=>`${shortDay(d.end)} ${finite(values[i])?values[i].toFixed(1)+unit:'暂无完整数据'}`).join('；')});
+  for(const v of [low,(low+high)/2,high])svg.append(svgNode('line',{x1:32,y1:y(v),x2:425,y2:y(v),class:'trend-grid'}),svgNode('text',{x:27,y:y(v)+3,'text-anchor':'end'},v.toFixed(0)));
+  svg.append(svgNode('text',{x:6,y:11},unit));
+  let segment=[];const flush=()=>{if(segment.length>1){svg.append(svgNode('polygon',{points:`${segment[0][0]},70 `+segment.map(p=>p.join(',')).join(' ')+` ${segment.at(-1)[0]},70`,fill:'#f6cf872e'}),svgNode('polyline',{points:segment.map(p=>p.join(',')).join(' '),class:'trend-line'}));}segment=[];};
+  values.forEach((value,i)=>{if(!isRain){if(finite(value))segment.push([x(i),y(value)]);else flush();}});flush();
+  days.forEach((day,i)=>{const value=values[i];svg.append(svgNode('text',{x:x(i),y:91,'text-anchor':'middle'},shortDay(day.end)));if(!finite(value)){svg.append(svgNode('text',{x:x(i),y:64,'text-anchor':'middle'},'—'));return;}
+   const shape=isRain?svgNode('rect',{x:x(i)-9,y:y(value),width:18,height:Math.max(0,70-y(value)),rx:3,class:'rain-bar'}):svgNode('circle',{cx:x(i),cy:y(value),r:3.5,class:'trend-point'});
+   shape.append(svgNode('title',{},`${shortDay(day.start)} 12:00 至 ${shortDay(day.end)} 12:00：${value.toFixed(1)} ${unit}`));svg.append(shape,svgNode('text',{x:x(i),y:y(value)-7,'text-anchor':'middle'},value.toFixed(1)));
+  });root.append(svg);
+ }
+ function renderRegionalWeather(){renderPeriod();if(!weatherRows)return;const report=WeatherSeries.summarize(weatherRows);$('weatherSummary').replaceChildren();
+  for(const [field,label,unit]of [['temperature_2m','日均气温','°C'],['relative_humidity_2m','日均湿度','%'],['wind_speed_10m','日均风速','km/h'],['precipitation','累计降水','mm']]){const value=report.latest[field],card=el('div','weather-metric'),reading=el('strong','',finite(value)?value.toFixed(1):'N/A');reading.append(el('small','',unit));card.append(el('span','',label),reading);card.title=`${label}：有效小时 ${report.latest.count[field]}/24`; $('weatherSummary').append(card);}
+  drawWeatherTrend(report.days);$('weatherUpdated').textContent=`更新 ${date(weatherFetched,true)}`;
+  const current=weatherRows.filter(r=>r.time<=Date.now()/1000&&finite(r.temperature_2m)).at(-1);if(current&&Date.now()/1000-current.time<7200){state.regionalCurrent={kind:'model_forecast',temperatureC:current.temperature_2m,windKph:current.wind_speed_10m,precipitationMm:current.precipitation,time:new Date(current.time*1000).toISOString()};renderWeather();}
+ }
+ async function loadRegionalWeather(){if(weatherLoading)return;weatherLoading=true;$('retryWeather').hidden=true;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);try{weatherRows=await WeatherSeries.fetchSeries(controller.signal);weatherFetched=new Date().toISOString();renderRegionalWeather();}catch{if(!weatherRows){$('weatherSummary').replaceChildren(el('p','','天气暂时无法读取'));$('weatherTrend').replaceChildren(el('p','weather-trend-empty','暂无可绘制的天气序列'));}else renderRegionalWeather();$('retryWeather').hidden=false;}finally{clearTimeout(timer);weatherLoading=false;}}
  function updateBrief(){const added=state.brief.has(state.selected);$('addToBrief').replaceChildren(icon(added?'check':'star'),document.createTextNode(added?'已加入简报':'加入简报'));$('addToBrief').classList.toggle('added',added);$('addToBrief').setAttribute('aria-pressed',String(added));$('exportBrief').disabled=!state.brief.size;$('briefCount').textContent=state.brief.size;$('briefCount').hidden=!state.brief.size;}
  function renderBrief(){const articles=list(state.data?.articles).filter(a=>state.brief.has(a.id));$('briefList').replaceChildren(...articles.map(a=>{const n=el('article','brief-item'),copy=el('div');copy.append(el('h3','',a.title),el('p','',`${a.publisher} ${date(a.publishedAt||a.publishedDate)}`));if(a.modelSummary.status==='succeeded')copy.append(el('p','brief-summary',a.modelSummary.summary));const remove=el('button','remove-brief');remove.append(icon('close'));remove.type='button';remove.setAttribute('aria-label','移除 '+a.title);remove.addEventListener('click',()=>{state.brief.delete(a.id);persist();updateBrief();renderBrief();});n.append(copy,remove);return n;}));if(!articles.length)$('briefList').append(el('p','dialog-intro','在资料详情中选择“加入简报”，汇集你关心的内容。'));updateBrief();}
  function generateBrief(){if(!state.data){toast('资料正在加载，请稍候。');return;}if(!state.brief.size){for(const a of filtered())state.brief.add(a.id);persist();}renderBrief();$('briefDialog').showModal();}
@@ -103,7 +131,9 @@
  document.querySelectorAll('[data-icon]').forEach(n=>n.replaceChildren(icon(n.dataset.icon)));
  $('searchInput').addEventListener('input',e=>{state.query=e.target.value;applyFilter();});
  $('resetSearch').addEventListener('click',()=>{state.query='';$('searchInput').value='';Object.keys(CATEGORIES).forEach(v=>state.topics.add(v));persist();applyFilter();});
- $('refreshButton').addEventListener('click',loadData);$('retryButton').addEventListener('click',loadData);
+ $('refreshButton').addEventListener('click',()=>{loadData();loadRegionalWeather();});$('retryButton').addEventListener('click',loadData);
+ $('retryWeather').addEventListener('click',loadRegionalWeather);
+ $('temperatureTrend').addEventListener('click',()=>{weatherField='temperature_2m';renderRegionalWeather();});$('rainTrend').addEventListener('click',()=>{weatherField='precipitation';renderRegionalWeather();});
  $('closeDetail').addEventListener('click',()=>{state.selected=null;renderArticles();renderDetail();});
  $('addToBrief').addEventListener('click',()=>{if(!state.selected)return;state.brief.has(state.selected)?state.brief.delete(state.selected):state.brief.add(state.selected);persist();updateBrief();toast(state.brief.has(state.selected)?'已加入简报':'已从简报移除');});
  $('generateButton').addEventListener('click',generateBrief);$('exportButton').addEventListener('click',exportBrief);$('exportBrief').addEventListener('click',exportBrief);
@@ -117,5 +147,6 @@
  for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close-dialog').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});}
  document.addEventListener('click',e=>{if(!e.target.closest('.map-tools')){for(const id of ['layersMenu','imageryMenu'])$(id).hidden=true;for(const id of ['layersButton','imageryButton'])$(id).setAttribute('aria-expanded','false');}});
  document.addEventListener('keydown',e=>{if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)&&!document.querySelector('dialog[open]')){e.preventDefault();$('searchInput').focus();}if(e.key==='Escape'){for(const id of ['layersMenu','imageryMenu'])$(id).hidden=true;}});
- renderMap();renderOverview();loadData();
+ renderMap();renderOverview();loadData();renderPeriod();loadRegionalWeather();
+ let periodEnd=WeatherSeries.windowAt().end;setInterval(()=>{const next=WeatherSeries.windowAt().end;if(next!==periodEnd){periodEnd=next;renderRegionalWeather();loadRegionalWeather();}},60000);
 })();
